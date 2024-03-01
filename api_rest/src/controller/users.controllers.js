@@ -96,11 +96,168 @@ const deleteStudent = async (req, res) => {
     }
 };
 
+// Obtiene la nota media del id del alumno pasado por parámetro
+
+const getAverageMark = async (req, res) => {
+    // Obtener el student_id del query de la solicitud
+    const studentId = req.query.student_id;
+
+    // Verificar que se haya proporcionado el student_id
+    if (!studentId) {
+        return res.status(400).send('El student_id es requerido para obtener la nota media.');
+    }
+
+    try {
+        // Preparar la consulta SQL para calcular la nota media
+        const sql = 'SELECT AVG(mark) AS averageMark FROM marks WHERE student_id = ?';
+        // Ejecutar la consulta con el student_id proporcionado
+        const [result] = await pool.query(sql, [studentId]);
+
+        // Verificar si se encontraron notas para el alumno
+        if (result.length === 0) {
+            return res.status(404).send('No se encontraron notas para el alumno con el student_id proporcionado.');
+        }
+
+        // Enviar la nota media del alumno
+        res.json({ studentId: studentId, averageMark: result[0].averageMark });
+    } catch (err) {
+        // En caso de error durante la consulta, capturar y enviar una respuesta de error
+        console.error(err);
+        res.status(500).send('Error al obtener la nota media del alumno.');
+    }
+};
+
+
+const getSubjectsByStudentId = async (req, res) => {
+    // Obtener el student_id del query de la solicitud
+    const studentId = req.query.student_id;
+
+    // Verificar que se haya proporcionado el student_id
+    if (!studentId) {
+        return res.status(400).send('El student_id es requerido para obtener la lista de asignaturas apuntadas.');
+    }
+
+    try {
+        // Preparar la consulta SQL con INNER JOIN para obtener las asignaturas
+        const sql = `
+            SELECT s.title 
+            FROM students AS stu
+            INNER JOIN subject_teacher AS st ON stu.group_id = st.group_id
+            INNER JOIN subjects AS s ON st.subject_id = s.subject_id
+            WHERE stu.student_id = ?`;
+        // Ejecutar la consulta con el student_id proporcionado
+        const [subjects] = await pool.query(sql, [studentId]);
+
+        // Verificar si se encontraron asignaturas para el alumno
+        if (subjects.length === 0) {
+            return res.status(404).send('No se encontraron asignaturas apuntadas para el alumno con el student_id proporcionado.');
+        }
+
+        // Enviar la lista de asignaturas apuntadas del alumno
+        res.json(subjects);
+    } catch (err) {
+        // En caso de error durante la consulta, capturar y enviar una respuesta de error
+        console.error(err);
+        res.status(500).send('Error al obtener la lista de asignaturas apuntadas del alumno.');
+    }
+};
+
+const getStudentsAndSubjects = async (req, res) => {
+    try {
+        // Preparar la consulta SQL con INNER JOIN para obtener la información necesaria
+        const sql = `
+            SELECT stu.first_name, stu.last_name, s.title 
+            FROM students AS stu
+            INNER JOIN subject_teacher AS st ON stu.group_id = st.group_id
+            INNER JOIN subjects AS s ON st.subject_id = s.subject_id`;
+        // Ejecutar la consulta
+        const [results] = await pool.query(sql);
+
+        // Verificar si se encontraron resultados
+        if (results.length === 0) {
+            return res.status(404).send('No se encontraron alumnos o asignaturas.');
+        }
+
+        // Enviar la lista de alumnos y las asignaturas a las que están apuntados
+        res.json(results);
+    } catch (err) {
+        // En caso de error durante la consulta, capturar y enviar una respuesta de error
+        console.error(err);
+        res.status(500).send('Error al obtener la lista de alumnos y asignaturas.');
+    }
+};
+
+
+const getSubjectsTaughtByTeacher = async (req, res) => {
+    // Obtener el teacher_id del query de la solicitud
+    const teacherId = req.query.teacher_id;
+
+    // Verificar que se haya proporcionado el teacher_id
+    if (!teacherId) {
+        return res.status(400).send('El teacher_id es requerido para obtener la lista de asignaturas impartidas.');
+    }
+
+    try {
+        // Preparar la consulta SQL para obtener las asignaturas impartidas por el profesor
+        const sql = `
+            SELECT sub.title 
+            FROM subjects AS sub
+            INNER JOIN subject_teacher AS st ON sub.subject_id = st.subject_id
+            WHERE st.teacher_id = ?`;
+        // Ejecutar la consulta con el teacher_id proporcionado
+        const [subjects] = await pool.query(sql, [teacherId]);
+
+        // Verificar si se encontraron asignaturas impartidas por el profesor
+        if (subjects.length === 0) {
+            return res.status(404).send('No se encontraron asignaturas impartidas por el profesor con el teacher_id proporcionado.');
+        }
+
+        // Enviar la lista de asignaturas impartidas por el profesor
+        res.json(subjects);
+    } catch (err) {
+        // En caso de error durante la consulta, capturar y enviar una respuesta de error
+        console.error(err);
+        res.status(500).send('Error al obtener la lista de asignaturas impartidas por el profesor.');
+    }
+};
+
+
+const getTeachersAndSubjects = async (req, res) => {
+    try {
+        // Preparar la consulta SQL con INNER JOIN para obtener la información necesaria
+        const sql = `
+            SELECT t.first_name, t.last_name, s.title 
+            FROM teacher AS t
+            INNER JOIN subject_teacher AS st ON t.teacher_id = st.teacher_id
+            INNER JOIN subjects AS s ON st.subject_id = s.subject_id`;
+        // Ejecutar la consulta
+        const [results] = await pool.query(sql);
+
+        // Verificar si se encontraron resultados
+        if (results.length === 0) {
+            return res.status(404).send('No se encontraron profesores o asignaturas.');
+        }
+
+        // Enviar la lista de profesores y las asignaturas que imparten
+        res.json(results);
+    } catch (err) {
+        // En caso de error durante la consulta, capturar y enviar una respuesta de error
+        console.error(err);
+        res.status(500).send('Error al obtener la lista de profesores y asignaturas.');
+    }
+};
+
+
 module.exports = {
     getStudentById,
     getAllStudents,
     createStudent,
     updateStudent,
-    deleteStudent
+    deleteStudent,
+    getAverageMark,
+    getSubjectsByStudentId,
+    getStudentsAndSubjects,
+    getSubjectsTaughtByTeacher,
+    getTeachersAndSubjects
 };
 
